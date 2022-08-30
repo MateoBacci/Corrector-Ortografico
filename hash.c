@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <assert.h>
 
 #include "funciones_tabla.h"
 #include "hash.h"
-#include "texman.h"
+#include "seatec.h"
 #include "slist.h"
 
 unsigned hash_index (char *word, unsigned total) {
@@ -18,8 +19,8 @@ unsigned hash_index (char *word, unsigned total) {
 /**
  * Crea una nueva tabla hash vacia, con la capacidad dada.
  */
-TablaHash tablahash_crear(unsigned capacidad, FuncionCopiadora copia,
-                          FuncionComparadora comp, FuncionDestructora destr,
+TablaHash tablahash_crear(unsigned capacidad, FuncionCopiaTabla copia,
+                          FuncionComparadoraTabla comp, FuncionDestructoraTabla destr,
                           FuncionHash hash) {
 
   // Pedimos memoria para la estructura principal y las casillas.
@@ -59,14 +60,18 @@ void tablahash_destruir(TablaHash tabla) {
 /**
  * Inserta un dato en la tabla, o lo reemplaza si ya se encontraba.
  */
-void tablahash_insertar(TablaHash tabla, char *dato) {
+void tablahash_insertar(TablaHash tabla, char *dato, int esDict) {
 
   // Calculamos la posicion del dato dado, de acuerdo a la funcion hash.
   unsigned posicion = tabla->hash(dato, tabla->capacidad);
-
-  tabla->palabras[posicion] = lista_agregar(tabla->palabras[posicion], dato);
-  tabla->numElems++;
-  tabla->factorCarga = (float)tabla->numElems / tabla->capacidad;
+  SList verificador = tabla->palabras[posicion];
+  tabla->palabras[posicion] = lista_agregar(tabla->palabras[posicion], dato,
+          (FuncionCopiaLista)tabla->copia, (FuncionComparaLista)tabla->comp, esDict);
+  
+  if (tabla->palabras[posicion] != verificador) {   // Si son distintos es porque se agregó un nodo.
+    tabla->numElems++;
+    tabla->factorCarga = (float)tabla->numElems / tabla->capacidad;  
+  }
 
   //printf("%s\n", tabla->palabras[posicion]->dato);
 }
@@ -80,15 +85,19 @@ int tablahash_buscar(TablaHash tabla, char *dato) {
   // Calculamos la posicion del dato dado, de acuerdo a la funcion hash.
   unsigned posicion = tabla->hash(dato, tabla->capacidad);
   
-  if (lista_buscar(tabla->palabras[posicion], dato) == NULL)
+  if (lista_buscar(tabla->palabras[posicion], dato, (FuncionComparaLista)tabla->comp) == NULL)
     return -1;
   
   return posicion;
 }
 
-void tablahash_redimensionar (TablaHash tabla) {
+int requiere_redimensionar (TablaHash tabla) {
+  return tabla->factorCarga >= 0.7;
+}
+
+void tablahash_redimensionar (TablaHash tabla, unsigned multiplo, int esDict) {
   SList *listaAux = tabla->palabras;
-  tabla->capacidad *= 2;
+  tabla->capacidad *= multiplo;
   tabla->numElems = 0;
   tabla->palabras = malloc(sizeof(SList) * tabla->capacidad);
 
@@ -96,30 +105,32 @@ void tablahash_redimensionar (TablaHash tabla) {
     tabla->palabras[i] = lista_crear();
   }
 
-  for (unsigned i = 0; i < tabla->capacidad / 2; i++) {
+  for (unsigned i = 0; i < tabla->capacidad / multiplo; i++) {
     SList nodoAux = listaAux[i];
     for (; nodoAux != NULL; nodoAux = nodoAux->sig) { 
-      tablahash_insertar(tabla, nodoAux->dato);
+      tablahash_insertar(tabla, nodoAux->dato, esDict);
     }
-    lista_destruir(listaAux[i]);
+    tabla->destr(listaAux[i]);
   }
   free(listaAux);
 }
 
 
-TablaHash tablahash_armar (char *nombreArchivo) {
+TablaHash tablahash_armar_diccionario (char *nombreArchivo) {
   FILE *archivo = fopen(nombreArchivo, "rb");
   assert(archivo != NULL);
 
-  TablaHash tabla = tablahash_crear(2000, copiar_palabra, comparar_palabras, 
+  TablaHash tabla = tablahash_crear(1000, copiar_palabra, comparar_palabras, 
                                     destruir_palabra, hashear_palabra);
 
   while (!feof(archivo)) {
     char palabraAux[30];
     fscanf(archivo, "%s ", palabraAux);
-    normalize_word(palabraAux);
-    if (tabla->factorCarga >= 0.7) tablahash_redimensionar(tabla);
-    tablahash_insertar(tabla, palabraAux);
+    for (int i = 0; palabraAux[i] != '\0'; i++) {
+      palabraAux[i] = toupper(palabraAux[i]);
+    }
+    if (requiere_redimensionar(tabla)) tablahash_redimensionar(tabla, 2, 1);
+    tablahash_insertar(tabla, palabraAux, 1);
   }
 
   fclose(archivo);

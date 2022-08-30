@@ -3,14 +3,14 @@
 #include "slist.h"
 
 /** Retorna una copia fisica del dato */
-typedef char *(*FuncionCopiadora)(char *dato);
+typedef char *(*FuncionCopiaTabla)(char *dato);
 
 /** Retorna un entero negativo si dato1 < dato2, 0 si son iguales y un entero
  * positivo si dato1 > dato2  */
-typedef int (*FuncionComparadora)(char *dato1, char *dato2);
+typedef int (*FuncionComparadoraTabla)(char *dato1, char *dato2);
 
 /** Libera la memoria alocada para el dato */ 
-typedef void (*FuncionDestructora)(SList lista);
+typedef void (*FuncionDestructoraTabla)(SList lista);
 
 typedef unsigned (*FuncionHash)(char *dato, unsigned total);
 
@@ -20,9 +20,9 @@ typedef struct _TablaHash {
   unsigned capacidad;
   unsigned numElems;
   float factorCarga;
-  FuncionCopiadora copia;
-  FuncionComparadora comp;
-  FuncionDestructora destr;
+  FuncionCopiaTabla copia;
+  FuncionComparadoraTabla comp;
+  FuncionDestructoraTabla destr;
   FuncionHash hash;
 } *TablaHash;
 
@@ -33,8 +33,8 @@ unsigned hash_index (char *word, unsigned total);
 /**
  * Crea una nueva tabla hash vacia, con la capacidad dada.
  */
-TablaHash tablahash_crear(unsigned capacidad, FuncionCopiadora copia,
-                          FuncionComparadora comp, FuncionDestructora destr,
+TablaHash tablahash_crear(unsigned capacidad, FuncionCopiaTabla copia,
+                          FuncionComparadoraTabla comp, FuncionDestructoraTabla destr,
                           FuncionHash hash);
 
 
@@ -46,7 +46,7 @@ void tablahash_destruir(TablaHash tabla);
 /**
  * Inserta un dato en la tabla, o lo reemplaza si ya se encontraba.
  */
-void tablahash_insertar(TablaHash tabla, char *dato);
+void tablahash_insertar(TablaHash tabla, char *dato, int esDict);
 
 /**
  * Retorna la posición del dato si está en la tabla, o -1 si no lo encuentra
@@ -58,9 +58,11 @@ int tablahash_buscar(TablaHash tabla, char *dato);
  */
 void tablahash_eliminar(TablaHash tabla, char *dato);
 
-void tablahash_redimensionar (TablaHash tabla);
+int requiere_redimensionar (TablaHash tabla);
 
-TablaHash tablahash_armar (char *nombreArchivo);
+void tablahash_redimensionar (TablaHash tabla, unsigned multiplo, int esDict);
+
+TablaHash tablahash_armar_diccionario (char *nombreArchivo);
 
 int palabra_correcta (TablaHash tabla, char *palabra);
 

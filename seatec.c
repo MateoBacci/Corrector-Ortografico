@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "sugerencias.h"
 #include "hash.h"
@@ -22,40 +23,55 @@ Total: 54n + 25 + (n - 1 pares de palabras generados por Separar).
 
 #define CANT_DE_LETRAS 26
 
+
 void agregar_palabra_segun_validez (TablaHash diccionario,
                                     TablaHash palabrasErroneas,
                                     SugValidas palabrasAceptadas,
-                                    char *palabra, int len) {
+                                    char *palabra, int len, int paso) {
     
   if (palabra_correcta(diccionario, palabra)) {
-    if (sug_validas_buscar(palabrasAceptadas, palabra) == 0)  //Si no está, la agrega.
-      sug_validas_agregar(palabrasAceptadas, palabra, len);
+    sug_validas_agregar(palabrasAceptadas, palabra, len);
   }
-  else {
-    tablahash_insertar(palabrasErroneas, palabra);
+  else if (paso < 2){  
+    /* if (requiere_redimensionar(palabrasErroneas)) {
+      tablahash_redimensionar(palabrasErroneas, 5, 0);
+    } */
+    tablahash_insertar(palabrasErroneas, palabra, 0);
   }
 }
 
+
+void chequear_ambas_palabras (SugValidas validas, TablaHash tabla,
+                              char *palabra, int len, int pos) {
+  
+  char *substr1 = strndup(palabra, pos);
+  char *substr2 = strndup(palabra + pos + 1, len);
+  if (palabra_correcta(tabla, substr1) && palabra_correcta(tabla, substr2)) 
+    sug_validas_agregar(validas, palabra, len);
+
+  free(substr1);
+  free(substr2);
+}
 
 void intercambiar_adyacentes (TablaHash diccionario, TablaHash palabrasErroneas,
                               SugValidas palabrasAceptadas, char *palabra,
-                              int len) {
+                              int len, int paso) {
   
-  char *palabraNueva = malloc(sizeof(char) * (len + 1));
-  palabraNueva[len] = '\0';
   for (int i = 0; i < len - 1 && palabrasAceptadas->cantidad < 5; i++) {
-    memcpy(palabraNueva, palabra, len);
-    char charAux = palabra[i];
-    palabraNueva[i] = palabra[i+1];
-    palabraNueva[i+1] = charAux;
-    agregar_palabra_segun_validez(diccionario, palabrasErroneas, palabrasAceptadas,
-                                  palabraNueva, len);
+    if (palabra[i] != palabra[i+1]) {
+      char *palabraNueva = strndup(palabra, len);
+      char charAux = palabra[i];
+      palabraNueva[i] = palabra[i+1];
+      palabraNueva[i+1] = charAux;
+      agregar_palabra_segun_validez(diccionario, palabrasErroneas, palabrasAceptadas,
+                                    palabraNueva, len, paso);
+      free(palabraNueva);
+    }
   }
-  free(palabraNueva);
 }
 
 void eliminar_caracteres (TablaHash diccionario, TablaHash palabrasErroneas,
-                           SugValidas palabrasAceptadas, char *palabra, int len) {
+                           SugValidas palabrasAceptadas, char *palabra, int len, int paso) {
   
   int cantidadAceptadas = 0;
   for (int i = 0; i < len && palabrasAceptadas->cantidad < 5; i++) {
@@ -64,21 +80,19 @@ void eliminar_caracteres (TablaHash diccionario, TablaHash palabrasErroneas,
     strncat(palabraNueva, palabra, i);
     strncat(palabraNueva, palabra + i + 1, len);
     agregar_palabra_segun_validez (diccionario, palabrasErroneas, palabrasAceptadas,
-                                  palabraNueva, len);
+                                  palabraNueva, len - 1, paso);
     free(palabraNueva);
   }
 }
 
 char *reemplazar_una_letra (char *palabra, int pos, char letra, int len) {
-  char *palabraNueva = malloc(sizeof(char) * (len + 1));
-  palabraNueva[len] = '\0';
-  memcpy(palabraNueva, palabra, len);
+  char *palabraNueva = strndup(palabra, len);
   palabraNueva[pos] = letra; 
   return palabraNueva;
 }
 
 void reemplazar_caracteres (TablaHash diccionario, TablaHash palabrasErroneas,
-                             SugValidas palabrasAceptadas, char *palabra, int len) {
+                             SugValidas palabrasAceptadas, char *palabra, int len, int paso) {
   int cantidadAceptadas = 0;
 
   for (int i = 0; i < len; i++) {
@@ -87,7 +101,7 @@ void reemplazar_caracteres (TablaHash diccionario, TablaHash palabrasErroneas,
         char *palabraNueva = reemplazar_una_letra(palabra, i, letra, len);
 
         agregar_palabra_segun_validez(diccionario, palabrasErroneas,
-                                      palabrasAceptadas, palabraNueva, len);
+                                      palabrasAceptadas, palabraNueva, len, paso);
 
         free(palabraNueva);
       }
@@ -106,12 +120,12 @@ char *insertar_nueva_letra (char *palabra, char letra, int pos, int len) {
       flag = 1;
     }
   }
-  palabraNueva[len] = 0;
+  palabraNueva[len] = '\0';
   return palabraNueva;
 }
 
 void insertar_caracter (TablaHash diccionario, TablaHash palabrasErroneas,
-                         SugValidas palabrasAceptadas, char *palabra, int len) {
+                         SugValidas palabrasAceptadas, char *palabra, int len, int paso) {
   
   int cantidadAceptadas = 0; 
   for (int i = 0; i < len + 1; i++) {
@@ -119,25 +133,23 @@ void insertar_caracter (TablaHash diccionario, TablaHash palabrasErroneas,
       char *palabraNueva = insertar_nueva_letra(palabra, letra, i, len+1);
 
       agregar_palabra_segun_validez(diccionario, palabrasErroneas,
-                                      palabrasAceptadas, palabraNueva, len+1);
+                                      palabrasAceptadas, palabraNueva, len + 1, paso);
 
       free(palabraNueva);
     }
   }
 }
 
-/* SList separar_palabra (TablaHash diccionario, TablaHash palabrasErroneas,
-                       SList palabrasAceptadas, char *palabra, int len) {
-  for (int i = 0; i < len - 1; i++) {
-    char *substr1= substring(palabra, 0, i+1);
-    char *substr2 = substring(palabra, i+1, len);
-    char *palabraAux = juntar_substrings(substr1, i+1, " ", 1);
-    char *palabraNueva = juntar_substrings(palabraAux, i+2, substr2, len - i - 1);
-    palabrasAceptadas = agregar_palabra_segun_validez(diccionario, palabrasErroneas, palabrasAceptadas, palabraNueva);
-    printf("%s\n", palabraNueva);
-      free(palabraNueva);
-
+void separar_palabra (TablaHash diccionario, TablaHash palabrasErroneas,
+                      SugValidas palabrasAceptadas, char *palabra, int len) {
+  for (int i = 1; i < len && palabrasAceptadas->cantidad < 5; i++) {
+    char *palabraNueva = malloc(sizeof(char) * len + 2);
+    palabraNueva[0] = '\0';
+    strncat(palabraNueva, palabra, i);
+    strcat(palabraNueva, " ");
+    strncat(palabraNueva, palabra + i, len);
+    chequear_ambas_palabras(palabrasAceptadas, diccionario, palabraNueva, len + 1, i);
+    free(palabraNueva);
   }
-  return palabrasAceptadas;
-} */
+} 
 

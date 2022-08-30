@@ -3,14 +3,14 @@
 #include <string.h>
 #include <assert.h>
 #include "sugerencias.h"
-#include "texman.h"
 #include "hash.h"
+#include "seatec.h"
 
 
 int main() {
   char *nombreArchivo = "lemario.txt";
   
-  TablaHash tabla = tablahash_armar(nombreArchivo);
+  TablaHash tabla = tablahash_armar_desde_archivo(nombreArchivo);
   printf("CANT ELEMENTOS: %d CAPACIDAD TOTAL: %d FACTOR CARGA: %.2f%c\n",
           tabla->numElems,   tabla->capacidad,   tabla->factorCarga * 100, 37); 
   
@@ -20,7 +20,7 @@ int main() {
   while (!feof(archivoConTexto)) {
     char palabra[30];
     fscanf(archivoConTexto, "%s ", palabra);
-    normalize_word(palabra);
+    check_word(palabra);
     if (!palabra_correcta(tabla, palabra)) {
       //buscar_sugerencias(tabla, palabra);
     }

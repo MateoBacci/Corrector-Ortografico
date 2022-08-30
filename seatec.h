@@ -3,13 +3,13 @@
 #ifndef __SEA_TEC_
 #define __SEA_TEC_
 
-// SEARCH TECHNIQUES
-
 void agregar_palabra_segun_validez (TablaHash diccionario,
                                     TablaHash palabrasErroneas,
                                     SugValidas palabrasAceptadas,
-                                    char *palabra);
+                                    char *palabra,
+                                    int paso);
 
+// SEARCH TECHNIQUES
 
 /**
  * Intercambia cada par de caracteres adyacentes en la palabra.
@@ -19,7 +19,8 @@ void intercambiar_adyacentes (TablaHash diccionario,
                               TablaHash palabrasErroneas,
                               SugValidas aceptadas,
                               char *palabra,
-                              int len);
+                              int len,
+                              int paso);
 
 /**
  * Elimina cada caracter de la palabra.
@@ -29,7 +30,8 @@ void eliminar_caracteres (TablaHash diccionario,
                           TablaHash palabrasErroneas,
                           SugValidas aceptadas,
                           char *palabra,
-                          int len);
+                          int len,
+                          int paso);
 
 /**
  * Reemplaza cada caracter de la palabra por cada caracter del alfabeto. 
@@ -39,7 +41,8 @@ void reemplazar_caracteres (TablaHash diccionario,
                             TablaHash palabrasErroneas,
                             SugValidas aceptadas,
                             char *palabra,
-                            int len);
+                            int len,
+                            int paso);
 
 
 /**
@@ -50,7 +53,8 @@ void insertar_caracter (TablaHash diccionario,
                         TablaHash palabrasErroneas,
                         SugValidas aceptadas,
                         char *palabra,
-                        int len);
+                        int len,
+                        int paso);
 
 
 /**
@@ -61,6 +65,7 @@ void separar_palabra (TablaHash diccionario,
                      TablaHash palabrasErroneas,
                      SugValidas aceptadas,
                      char *palabra,
-                     int len);
+                     int len,
+                     int paso);
 
 #endif // __SEA_TEC_
