@@ -1,13 +1,12 @@
 #include "hash.h"
 #include "sugerencias.h"
-#ifndef __SEA_TEC_
-#define __SEA_TEC_
+#ifndef __SEA_TEC__
+#define __SEA_TEC__
 
 void agregar_palabra_segun_validez (TablaHash diccionario,
                                     TablaHash palabrasErroneas,
                                     SugValidas palabrasAceptadas,
-                                    char *palabra,
-                                    int paso);
+                                    char *palabra, int paso);
 
 // SEARCH TECHNIQUES
 
@@ -19,6 +18,7 @@ void intercambiar_adyacentes (TablaHash diccionario,
                               TablaHash palabrasErroneas,
                               SugValidas aceptadas,
                               char *palabra,
+                              char *copia, 
                               int len,
                               int paso);
 
@@ -30,6 +30,7 @@ void eliminar_caracteres (TablaHash diccionario,
                           TablaHash palabrasErroneas,
                           SugValidas aceptadas,
                           char *palabra,
+                          char *copia, 
                           int len,
                           int paso);
 
@@ -41,6 +42,7 @@ void reemplazar_caracteres (TablaHash diccionario,
                             TablaHash palabrasErroneas,
                             SugValidas aceptadas,
                             char *palabra,
+                            char *copia, 
                             int len,
                             int paso);
 
@@ -53,6 +55,7 @@ void insertar_caracter (TablaHash diccionario,
                         TablaHash palabrasErroneas,
                         SugValidas aceptadas,
                         char *palabra,
+                        char *copia, 
                         int len,
                         int paso);
 
@@ -65,7 +68,7 @@ void separar_palabra (TablaHash diccionario,
                      TablaHash palabrasErroneas,
                      SugValidas aceptadas,
                      char *palabra,
-                     int len,
-                     int paso);
+                     char *copia, 
+                     int len);
 
-#endif // __SEA_TEC_
+#endif // __SEA_TEC__

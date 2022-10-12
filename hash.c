@@ -4,14 +4,19 @@
 #include <ctype.h>
 #include <assert.h>
 
+#include "newio.h"
 #include "funciones_tabla.h"
 #include "hash.h"
 #include "seatec.h"
 #include "slist.h"
 
-unsigned hash_index (char *word, unsigned total) {
-  unsigned  hash = 0;
-  for (; *word != 0; ++word) 
+/**
+ * Funcion de hash para strings propuesta por Kernighan & Ritchie en "The C
+ * Programming Language (Second Ed.)".
+ */
+unsigned hash_index(char *word, unsigned total) {
+  unsigned hash = 0;
+  for (; *word != 0; ++word)
     hash += *word + 31 * hash;
   return hash % total;
 }
@@ -20,8 +25,8 @@ unsigned hash_index (char *word, unsigned total) {
  * Crea una nueva tabla hash vacia, con la capacidad dada.
  */
 TablaHash tablahash_crear(unsigned capacidad, FuncionCopiaTabla copia,
-                          FuncionComparadoraTabla comp, FuncionDestructoraTabla destr,
-                          FuncionHash hash) {
+                          FuncionComparadoraTabla comp,
+                          FuncionDestructoraTabla destr, FuncionHash hash) {
 
   // Pedimos memoria para la estructura principal y las casillas.
   TablaHash tabla = malloc(sizeof(struct _TablaHash));
@@ -45,92 +50,97 @@ TablaHash tablahash_crear(unsigned capacidad, FuncionCopiaTabla copia,
 }
 
 void tablahash_destruir(TablaHash tabla) {
-  
-  // Destruir cada uno de los datos.
+  // Destruye cada uno de los datos.
   for (unsigned i = 0; i < tabla->capacidad; i++)
-    if (tabla->palabras[i] != NULL)
+    if (tabla->palabras[i] != NULL) {
       tabla->destr(tabla->palabras[i]);
-
-  // Liberar el arreglo de casillas y la tabla.
+    }
+  // Libera el arreglo de casillas y la tabla.
   free(tabla->palabras);
   free(tabla);
   return;
 }
 
 /**
- * Inserta un dato en la tabla, o lo reemplaza si ya se encontraba.
+ * Inserta un dato en la tabla. En caso de colisión utiliza encadenamiento con
+ * listas enlazadas simples.
  */
-void tablahash_insertar(TablaHash tabla, char *dato, int esDict) {
-
+void tablahash_insertar(TablaHash tabla, char *dato) {
   // Calculamos la posicion del dato dado, de acuerdo a la funcion hash.
   unsigned posicion = tabla->hash(dato, tabla->capacidad);
-  SList verificador = tabla->palabras[posicion];
-  tabla->palabras[posicion] = lista_agregar(tabla->palabras[posicion], dato,
-          (FuncionCopiaLista)tabla->copia, (FuncionComparaLista)tabla->comp, esDict);
-  
-  if (tabla->palabras[posicion] != verificador) {   // Si son distintos es porque se agregó un nodo.
-    tabla->numElems++;
-    tabla->factorCarga = (float)tabla->numElems / tabla->capacidad;  
-  }
-
-  //printf("%s\n", tabla->palabras[posicion]->dato);
+  tabla->palabras[posicion] =
+      lista_agregar(tabla->palabras[posicion], dato,
+                    (FuncionCopiaLista) tabla->copia);
+  tabla->numElems++;
+  tabla->factorCarga = (float) tabla->numElems / tabla->capacidad;
 }
 
 /**
- * Retorna el dato de la tabla que coincida con el dato dado, o NULL si el dato
- * buscado no se encuentra en la tabla.
+ * Busca el dato en la tabla, si lo encuentra retorna su posición, -1 si no.
  */
 int tablahash_buscar(TablaHash tabla, char *dato) {
 
   // Calculamos la posicion del dato dado, de acuerdo a la funcion hash.
   unsigned posicion = tabla->hash(dato, tabla->capacidad);
-  
-  if (lista_buscar(tabla->palabras[posicion], dato, (FuncionComparaLista)tabla->comp) == NULL)
+
+  // Busca el dato en la posición obtenida.
+  if (lista_buscar
+      (tabla->palabras[posicion], dato,
+       (FuncionComparaLista) tabla->comp) == NULL)
     return -1;
-  
+
   return posicion;
 }
 
-int requiere_redimensionar (TablaHash tabla) {
-  return tabla->factorCarga >= 0.7;
+/* Verifica si la tabla superó el límite de su factor de carga. */
+int requiere_redimensionar(TablaHash tabla) {
+  return tabla->factorCarga >= 0.6;
 }
 
-void tablahash_redimensionar (TablaHash tabla, unsigned multiplo, int esDict) {
+/* Redimensiona la tabla */
+void tablahash_redimensionar(TablaHash tabla) {
   SList *listaAux = tabla->palabras;
-  tabla->capacidad *= multiplo;
+
+  tabla->capacidad *= 2;
   tabla->numElems = 0;
   tabla->palabras = malloc(sizeof(SList) * tabla->capacidad);
 
-  for (unsigned i = 0; i < tabla->capacidad; ++i) {
+  for (unsigned i = 0; i < tabla->capacidad; i++) 
     tabla->palabras[i] = lista_crear();
+
+  unsigned i = 0;
+  for (; i < tabla->capacidad / 2; i++) {
+    SList nodoAux = listaAux[i];
+    for (; nodoAux != NULL; nodoAux = nodoAux->sig) 
+      tablahash_insertar(tabla, nodoAux->dato);
+    
+    lista_destruir(listaAux[i], (FuncionDestruyeLista) free);
   }
 
-  for (unsigned i = 0; i < tabla->capacidad / multiplo; i++) {
-    SList nodoAux = listaAux[i];
-    for (; nodoAux != NULL; nodoAux = nodoAux->sig) { 
-      tablahash_insertar(tabla, nodoAux->dato, esDict);
-    }
-    tabla->destr(listaAux[i]);
-  }
   free(listaAux);
 }
 
 
-TablaHash tablahash_armar_diccionario (char *nombreArchivo) {
+/* Guarda las palabras del archivo tomado como diccionario en una tabla hash. */
+TablaHash tablahash_armar_diccionario(char *nombreArchivo) {
   FILE *archivo = fopen(nombreArchivo, "rb");
-  assert(archivo != NULL);
-
-  TablaHash tabla = tablahash_crear(1000, copiar_palabra, comparar_palabras, 
-                                    destruir_palabra, hashear_palabra);
+  if (archivo == NULL)
+    return NULL;
+  TablaHash tabla = tablahash_crear(1000, copiar_palabra, comparar_palabras,
+                                    destruir_palabras_en_lista,
+                                    hashear_palabra);
 
   while (!feof(archivo)) {
     char palabraAux[30];
     fscanf(archivo, "%s ", palabraAux);
-    for (int i = 0; palabraAux[i] != '\0'; i++) {
+    
+    for (int i = 0; palabraAux[i] != '\0'; i++) 
       palabraAux[i] = toupper(palabraAux[i]);
-    }
-    if (requiere_redimensionar(tabla)) tablahash_redimensionar(tabla, 2, 1);
-    tablahash_insertar(tabla, palabraAux, 1);
+
+    if (requiere_redimensionar(tabla))
+      tablahash_redimensionar(tabla);
+    
+    tablahash_insertar(tabla, palabraAux);
   }
 
   fclose(archivo);
@@ -138,7 +148,8 @@ TablaHash tablahash_armar_diccionario (char *nombreArchivo) {
   return tabla;
 }
 
-int palabra_correcta (TablaHash tabla, char *palabra) {
+/* Retorna 1 si la palabra está en la tabla, 0 si no */
+int palabra_correcta(TablaHash tabla, char *palabra) {
   if (tablahash_buscar(tabla, palabra) == -1)
     return 0;
   return 1;

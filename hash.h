@@ -1,8 +1,8 @@
-#ifndef __HASH_
-#define __HASH_
+#ifndef __HASH__
+#define __HASH__
 #include "slist.h"
 
-/** Retorna una copia fisica del dato */
+/** Retorna una copia del dato */
 typedef char *(*FuncionCopiaTabla)(char *dato);
 
 /** Retorna un entero negativo si dato1 < dato2, 0 si son iguales y un entero
@@ -29,7 +29,6 @@ typedef struct _TablaHash {
 
 unsigned hash_index (char *word, unsigned total);
 
-
 /**
  * Crea una nueva tabla hash vacia, con la capacidad dada.
  */
@@ -46,7 +45,7 @@ void tablahash_destruir(TablaHash tabla);
 /**
  * Inserta un dato en la tabla, o lo reemplaza si ya se encontraba.
  */
-void tablahash_insertar(TablaHash tabla, char *dato, int esDict);
+void tablahash_insertar(TablaHash tabla, char *dato);
 
 /**
  * Retorna la posición del dato si está en la tabla, o -1 si no lo encuentra
@@ -60,10 +59,10 @@ void tablahash_eliminar(TablaHash tabla, char *dato);
 
 int requiere_redimensionar (TablaHash tabla);
 
-void tablahash_redimensionar (TablaHash tabla, unsigned multiplo, int esDict);
+void tablahash_redimensionar (TablaHash tabla);
 
 TablaHash tablahash_armar_diccionario (char *nombreArchivo);
 
 int palabra_correcta (TablaHash tabla, char *palabra);
 
-#endif // __HASH_
+#endif // __HASH__
